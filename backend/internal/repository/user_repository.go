@@ -13,6 +13,7 @@ import (
 type UserRepository interface {
 	Create(user *model.User) error
 	FindByID(id uint64) (*model.User, error)
+	FindByIDs(ids []uint64) ([]model.User, error)
 	FindByUsername(username string) (*model.User, error)
 	FindByEmail(email string) (*model.User, error)
 	FindByAccount(account string) (*model.User, error)
@@ -47,6 +48,18 @@ func (r *userRepository) FindByID(id uint64) (*model.User, error) {
 		return nil, fmt.Errorf("find user by id %d: %w", id, err)
 	}
 	return &user, nil
+}
+
+// FindByIDs 按 ID 批量查询用户（胶囊「收到的」列表补全主人资料）。
+func (r *userRepository) FindByIDs(ids []uint64) ([]model.User, error) {
+	var users []model.User
+	if len(ids) == 0 {
+		return users, nil
+	}
+	if err := r.db.Where("id IN ?", ids).Find(&users).Error; err != nil {
+		return nil, fmt.Errorf("find users by ids %v: %w", ids, err)
+	}
+	return users, nil
 }
 
 func (r *userRepository) FindByUsername(username string) (*model.User, error) {

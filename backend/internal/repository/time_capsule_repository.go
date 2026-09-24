@@ -16,6 +16,8 @@ type TimeCapsuleRepository interface {
 	Delete(id uint64) error
 	ListByUserID(userID uint64, offset, limit int) ([]model.TimeCapsule, error)
 	CountByUserID(userID uint64) (int64, error)
+	ListByRecipientID(recipientID uint64, offset, limit int) ([]model.TimeCapsule, error)
+	CountByRecipientID(recipientID uint64) (int64, error)
 	UnlockDue(now time.Time) ([]model.TimeCapsule, error)
 	Update(capsule *model.TimeCapsule) error
 }
@@ -66,6 +68,23 @@ func (r *timeCapsuleRepository) CountByUserID(userID uint64) (int64, error) {
 	var total int64
 	if err := r.db.Model(&model.TimeCapsule{}).Where("user_id = ?", userID).Count(&total).Error; err != nil {
 		return 0, fmt.Errorf("count capsules by user %d: %w", userID, err)
+	}
+	return total, nil
+}
+
+// ListByRecipientID 查询指定收件人名下收到的胶囊（「收到的」列表）。
+func (r *timeCapsuleRepository) ListByRecipientID(recipientID uint64, offset, limit int) ([]model.TimeCapsule, error) {
+	var items []model.TimeCapsule
+	if err := r.db.Where("recipient_id = ?", recipientID).Order("unlock_at ASC").Offset(offset).Limit(limit).Find(&items).Error; err != nil {
+		return nil, fmt.Errorf("list capsules by recipient %d: %w", recipientID, err)
+	}
+	return items, nil
+}
+
+func (r *timeCapsuleRepository) CountByRecipientID(recipientID uint64) (int64, error) {
+	var total int64
+	if err := r.db.Model(&model.TimeCapsule{}).Where("recipient_id = ?", recipientID).Count(&total).Error; err != nil {
+		return 0, fmt.Errorf("count capsules by recipient %d: %w", recipientID, err)
 	}
 	return total, nil
 }

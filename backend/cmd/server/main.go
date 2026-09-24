@@ -54,6 +54,7 @@ func main() {
 	claimRepo := repository.NewWishClaimRepository(db)
 	blessRepo := repository.NewBlessingRepository(db)
 	capsuleRepo := repository.NewTimeCapsuleRepository(db)
+	replyRepo := repository.NewCapsuleReplyRepository(db)
 	badgeRepo := repository.NewBadgeRepository(db)
 	auditRepo := repository.NewAuditLogRepository(db)
 	txManager := repository.NewTxManager(db)
@@ -65,7 +66,7 @@ func main() {
 	wishSvc := service.NewWishService(wishRepo, claimRepo, blessRepo, userRepo, badgeSvc, auditSvc, logger)
 	claimSvc := service.NewWishClaimService(txManager, wishRepo, claimRepo, userRepo, badgeSvc, auditSvc, logger)
 	blessSvc := service.NewBlessingService(blessRepo, wishRepo, userRepo, badgeSvc, auditSvc, logger)
-	capsuleSvc := service.NewTimeCapsuleService(capsuleRepo, auditSvc, logger)
+	capsuleSvc := service.NewTimeCapsuleService(capsuleRepo, replyRepo, userRepo, auditSvc, logger)
 	uploadSvc := service.NewUploadService(cfg, minioClient, auditSvc, logger)
 
 	// 处理器

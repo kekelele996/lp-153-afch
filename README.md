@@ -31,7 +31,7 @@ docker compose down -v --remove-orphans
 1. **心愿发布**：文字 + 图片，分类（学习成长/旅行探险/情感陪伴/职业发展/生活小确幸/其他），可见范围（公开/好友可见/匿名），期望完成时间 + 难度标签。
 2. **心愿认领与进度追踪**：心愿广场浏览并认领心愿成为「圆梦人」，更新进度（百分比 + 文字），支持里程碑打卡。
 3. **祝福留言板**：每个心愿专属留言板，送祝福与虚拟礼物（🎁 表情包）；心愿完成自动转为庆祝页。
-4. **时光胶囊**：定时解锁的文字 + 图片 + 音频胶囊；解锁前内容打码，到期自动解锁并播放解锁动画。
+4. **时光胶囊**：定时解锁的文字 + 图片 + 音频胶囊；封存时可指定一位朋友（用户名）作为收件人共同开启，胶囊页分「我封存的 / 收到的」两组；解锁前收件人只能看到标题与剩余时间，到期后双方均可阅读；收件人可回信一次（发出不可改），主人有权撤回回信并仍可查看原文。
 5. **心愿成就徽章**：首次许愿、首次认领、首次祝福、十次圆梦、圆梦大师；展示在个人主页。
 6. **搜索与发现广场**：按标签/关键词搜索，热门圆梦人排行榜 + 最新完成的心愿故事。
 
@@ -58,7 +58,7 @@ lp-153/
 │   ├── internal/
 │   │   ├── config/                 # 环境变量配置
 │   │   ├── database/               # PostgreSQL / Redis / MinIO 连接
-│   │   ├── model/                  # 7 个实体（user/wish/claim/blessing/capsule/badge/audit）
+│   │   ├── model/                  # 8 个实体（user/wish/claim/blessing/capsule/capsule_reply/badge/audit）
 │   │   ├── dto/                    # 每个实体一个 DTO 文件（含 validator 校验）
 │   │   ├── repository/             # 每个实体一个仓储文件（哨兵错误）
 │   │   ├── service/                # 每个实体一个服务文件（事务/状态机）
@@ -167,13 +167,28 @@ curl -sS -X POST http://localhost:19403/api/v1/wishes/1/blessings \
   -d '{"content":"祝你梦想成真！","gift_emoji":"🎁"}'
 ```
 
-### 8. 封存时光胶囊
+### 8. 封存时光胶囊（可指定收件人）
 
 ```bash
 curl -sS -X POST http://localhost:19403/api/v1/capsules \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"title":"给一年后的自己","content":"要更勇敢","unlock_at":"2027-08-17T00:00:00+08:00"}'
+  -d '{"title":"给一年后的我们","content":"要更勇敢","unlock_at":"2027-08-17T00:00:00+08:00","recipient_username":"bob"}'
+# 收件人不能填自己（返回 50003）；账号不存在返回 50004，前端提示后留在填写页
+```
+
+### 9. 收件人回信 / 主人撤回回信
+
+```bash
+# 收件人在胶囊解锁后回信（每封胶囊仅一次，发出不可改）
+curl -sS -X POST http://localhost:19403/api/v1/capsules/1/reply \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $RECIPIENT_TOKEN" \
+  -d '{"content":"收到啦，我们做到了！"}'
+
+# 胶囊主人撤回回信（撤回后收件人不可见，主人仍可看到原文与撤回记录）
+curl -sS -X DELETE http://localhost:19403/api/v1/capsules/1/reply \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ## API 清单（统一前缀 `/api/v1`，响应统一 `{"code":0,"message":"ok","data":...}`）
@@ -222,10 +237,13 @@ curl -sS -X POST http://localhost:19403/api/v1/capsules \
 
 | 方法 | 路径 | 说明 | 鉴权 |
 | --- | --- | --- | --- |
-| POST | `/capsules` | 封存胶囊 | JWT |
-| GET | `/capsules/mine` | 我的胶囊（未解锁内容打码） | JWT |
-| GET | `/capsules/:id` | 胶囊详情（本人） | JWT |
-| DELETE | `/capsules/:id` | 删除胶囊（本人） | JWT |
+| POST | `/capsules` | 封存胶囊（可选 `recipient_username` 指定共同开启人，不能为自己） | JWT |
+| GET | `/capsules/mine` | 我封存的（未解锁内容打码） | JWT |
+| GET | `/capsules/received` | 收到的（解锁前仅标题+剩余时间，正文/图片/语音打码） | JWT |
+| GET | `/capsules/:id` | 胶囊详情（主人或收件人，按视角打码；访问时到期自动解锁） | JWT |
+| POST | `/capsules/:id/reply` | 收件人回信（解锁后，每封仅一次，发出不可改） | JWT |
+| DELETE | `/capsules/:id/reply` | 主人撤回回信（收件人不可见，主人仍可见原文） | JWT |
+| DELETE | `/capsules/:id` | 删除胶囊（仅主人，级联清理回信） | JWT |
 
 ### 成就徽章 / 发现
 
@@ -312,10 +330,28 @@ curl -sS -X POST http://localhost:19403/api/v1/capsules \
 | --- | --- |
 | 后端 constants | `backend/internal/constants/capsule_status.go` |
 | 后端模型 | `backend/internal/model/time_capsule.go`（Status 字段） |
+| 后端 DTO | `backend/internal/dto/time_capsule_dto.go`（打码分支） |
 | 后端状态机 | `backend/internal/service/time_capsule_service.go`（GetByID/UnlockDue 自动解锁） |
+| 后端日志模板 | `backend/internal/constants/log_templates.go`（`LogCapsuleUnlocked`） |
+| 后端错误码 | `backend/internal/constants/error_codes.go`（`CodeCapsuleLocked` 等） |
 | 后端 formatters | `backend/internal/util/formatters.go`（`FormatCapsuleStatus`） |
 | 前端 constants | `frontend/src/constants/index.ts`（`CAPSULE_STATUS`/`CAPSULE_STATUS_TEXT`） |
-| 前端页面 | `frontend/src/pages/capsules.tsx`、`src/components/StatusBadge.tsx` |
+| 前端页面/组件 | `frontend/src/pages/capsules.tsx`、`src/components/StatusBadge.tsx`、`CapsuleCard.tsx`、`CapsuleCountdown.tsx` |
+
+### 枚举 5b：胶囊回信状态（active / withdrawn）
+
+| 层 | 位置 |
+| --- | --- |
+| 后端 constants | `backend/internal/constants/reply_status.go` |
+| 后端模型 | `backend/internal/model/capsule_reply.go`（Status 字段） |
+| 后端 DTO | `backend/internal/dto/time_capsule_dto.go`（`CapsuleReplyResponse`、撤回打码分支） |
+| 后端状态机 | `backend/internal/service/time_capsule_service.go`（SendReply 一次性 / WithdrawReply 主人撤回） |
+| 后端 handler 校验 | `backend/internal/handler/time_capsule_handler.go`（SendReply/WithdrawReply） |
+| 后端日志模板 | `backend/internal/constants/log_templates.go`（`LogCapsuleReplySent`/`LogCapsuleReplyWithdrawn`） |
+| 后端错误码 | `backend/internal/constants/error_codes.go`（`CodeReplyAlreadySent`/`CodeReplyLocked`/`CodeReplyNotOwner` 等） |
+| 后端 formatters | `backend/internal/util/formatters.go`（`FormatReplyStatus`） |
+| 前端 constants | `frontend/src/constants/index.ts`（`REPLY_STATUS`/`REPLY_STATUS_TEXT`） |
+| 前端组件 | `frontend/src/components/CapsuleCard.tsx`、`src/components/CapsuleDetailModal.tsx` |
 
 ### 枚举 6：成就徽章类型（first_wish / first_claim / first_blessing / ten_completions / wish_master）
 

@@ -60,18 +60,33 @@ CREATE TABLE IF NOT EXISTS blessings (
 CREATE INDEX IF NOT EXISTS idx_blessings_wish ON blessings(wish_id);
 
 CREATE TABLE IF NOT EXISTS time_capsules (
-    id          BIGSERIAL PRIMARY KEY,
-    user_id     BIGINT NOT NULL REFERENCES users(id),
-    title       VARCHAR(100) NOT NULL,
-    content     TEXT NOT NULL,
-    image_urls  TEXT NOT NULL DEFAULT '[]',
-    audio_url   VARCHAR(255) DEFAULT '',
-    unlock_at   TIMESTAMPTZ NOT NULL,
-    status      VARCHAR(20) NOT NULL DEFAULT 'locked',
-    unlocked_at TIMESTAMPTZ,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                 BIGSERIAL PRIMARY KEY,
+    user_id            BIGINT NOT NULL REFERENCES users(id),
+    title              VARCHAR(100) NOT NULL,
+    content            TEXT NOT NULL,
+    image_urls         TEXT NOT NULL DEFAULT '[]',
+    audio_url          VARCHAR(255) DEFAULT '',
+    unlock_at          TIMESTAMPTZ NOT NULL,
+    status             VARCHAR(20) NOT NULL DEFAULT 'locked',
+    unlocked_at        TIMESTAMPTZ,
+    recipient_id       BIGINT REFERENCES users(id),
+    recipient_username VARCHAR(50) NOT NULL DEFAULT '',
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_capsules_user ON time_capsules(user_id);
+CREATE INDEX IF NOT EXISTS idx_capsules_recipient ON time_capsules(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_capsules_status ON time_capsules(status);
+
+CREATE TABLE IF NOT EXISTS capsule_replies (
+    id           BIGSERIAL PRIMARY KEY,
+    capsule_id   BIGINT NOT NULL UNIQUE REFERENCES time_capsules(id),
+    user_id      BIGINT NOT NULL REFERENCES users(id),
+    content      TEXT NOT NULL,
+    status       VARCHAR(20) NOT NULL DEFAULT 'active',
+    withdrawn_at TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_capsule_replies_user ON capsule_replies(user_id);
 
 CREATE TABLE IF NOT EXISTS badges (
     id          BIGSERIAL PRIMARY KEY,

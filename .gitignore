@@ -14,3 +14,6 @@ backend/server
 # 本地环境
 .env.local
 .DS_Store
+
+# TypeScript 增量构建信息
+*.tsbuildinfo

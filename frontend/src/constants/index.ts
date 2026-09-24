@@ -76,6 +76,15 @@ export const CAPSULE_STATUS_TEXT: Record<string, string> = {
   unlocked: "已解锁",
 };
 
+export const REPLY_STATUS = {
+  ACTIVE: "active",
+  WITHDRAWN: "withdrawn",
+} as const;
+export const REPLY_STATUS_TEXT: Record<string, string> = {
+  active: "可查看",
+  withdrawn: "已撤回",
+};
+
 export const BADGE_TYPE = {
   FIRST_WISH: "first_wish",
   FIRST_CLAIM: "first_claim",

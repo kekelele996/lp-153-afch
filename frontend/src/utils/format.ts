@@ -4,6 +4,7 @@ import {
   DIFFICULTY_TEXT,
   CATEGORY_TEXT,
   CAPSULE_STATUS_TEXT,
+  REPLY_STATUS_TEXT,
   BADGE_TYPE_TEXT,
   ROLE_TEXT,
 } from "@/constants";
@@ -39,6 +40,24 @@ export function formatCategory(c: string) {
 
 export function formatCapsuleStatus(s: string) {
   return CAPSULE_STATUS_TEXT[s] || s;
+}
+
+export function formatReplyStatus(s: string) {
+  return REPLY_STATUS_TEXT[s] || s;
+}
+
+// formatCountdown 计算到目标时间的剩余时长（解锁前展示），已到期返回 null。
+export function formatCountdown(target: string): string | null {
+  const diff = new Date(target).getTime() - Date.now();
+  if (Number.isNaN(diff) || diff <= 0) return null;
+  const days = Math.floor(diff / 86_400_000);
+  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
+  const minutes = Math.floor((diff % 3_600_000) / 60_000);
+  const seconds = Math.floor((diff % 60_000) / 1000);
+  if (days > 0) return `${days} 天 ${hours} 小时`;
+  if (hours > 0) return `${hours} 小时 ${minutes} 分`;
+  if (minutes > 0) return `${minutes} 分 ${seconds} 秒`;
+  return `${seconds} 秒`;
 }
 
 export function formatBadgeType(t: string) {
