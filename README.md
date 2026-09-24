@@ -31,7 +31,7 @@ docker compose down -v --remove-orphans
 1. **心愿发布**：文字 + 图片，分类（学习成长/旅行探险/情感陪伴/职业发展/生活小确幸/其他），可见范围（公开/好友可见/匿名），期望完成时间 + 难度标签。
 2. **心愿认领与进度追踪**：心愿广场浏览并认领心愿成为「圆梦人」，更新进度（百分比 + 文字），支持里程碑打卡。
 3. **祝福留言板**：每个心愿专属留言板，送祝福与虚拟礼物（🎁 表情包）；心愿完成自动转为庆祝页。
-4. **时光胶囊**：定时解锁的文字 + 图片 + 音频胶囊；解锁前内容打码，到期自动解锁并播放解锁动画。
+4. **时光胶囊**：定时解锁的文字 + 图片 + 音频胶囊；封存时可指定一位朋友的用户名作为收件人（不能填自己），胶囊页分「我封存的 / 收到的」；解锁前收件人只能看标题与剩余时间，到期双方一起打开，收件人可回信一次（不可修改），主人可撤回回信。
 5. **心愿成就徽章**：首次许愿、首次认领、首次祝福、十次圆梦、圆梦大师；展示在个人主页。
 6. **搜索与发现广场**：按标签/关键词搜索，热门圆梦人排行榜 + 最新完成的心愿故事。
 
@@ -173,7 +173,7 @@ curl -sS -X POST http://localhost:19403/api/v1/wishes/1/blessings \
 curl -sS -X POST http://localhost:19403/api/v1/capsules \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"title":"给一年后的自己","content":"要更勇敢","unlock_at":"2027-08-17T00:00:00+08:00"}'
+  -d '{"title":"给一年后的我们","content":"要更勇敢","recipient_username":"bob","unlock_at":"2027-08-17T00:00:00+08:00"}'
 ```
 
 ## API 清单（统一前缀 `/api/v1`，响应统一 `{"code":0,"message":"ok","data":...}`）
@@ -222,10 +222,13 @@ curl -sS -X POST http://localhost:19403/api/v1/capsules \
 
 | 方法 | 路径 | 说明 | 鉴权 |
 | --- | --- | --- | --- |
-| POST | `/capsules` | 封存胶囊 | JWT |
-| GET | `/capsules/mine` | 我的胶囊（未解锁内容打码） | JWT |
-| GET | `/capsules/:id` | 胶囊详情（本人） | JWT |
-| DELETE | `/capsules/:id` | 删除胶囊（本人） | JWT |
+| POST | `/capsules` | 封存胶囊（可带 `recipient_username` 指定收件人，不能为自己） | JWT |
+| GET | `/capsules/mine` | 我封存的胶囊（未解锁内容打码） | JWT |
+| GET | `/capsules/received` | 我收到的胶囊（解锁前仅标题/剩余时间） | JWT |
+| GET | `/capsules/:id` | 胶囊详情（主人或收件人；解锁前正文/图片/语音打码） | JWT |
+| POST | `/capsules/:id/reply` | 收件人到期后回信（仅一次，不可修改） | JWT |
+| DELETE | `/capsules/:id/reply` | 主人撤回收件人的回信 | JWT |
+| DELETE | `/capsules/:id` | 删除胶囊（仅主人） | JWT |
 
 ### 成就徽章 / 发现
 

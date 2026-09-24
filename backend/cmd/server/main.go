@@ -65,7 +65,7 @@ func main() {
 	wishSvc := service.NewWishService(wishRepo, claimRepo, blessRepo, userRepo, badgeSvc, auditSvc, logger)
 	claimSvc := service.NewWishClaimService(txManager, wishRepo, claimRepo, userRepo, badgeSvc, auditSvc, logger)
 	blessSvc := service.NewBlessingService(blessRepo, wishRepo, userRepo, badgeSvc, auditSvc, logger)
-	capsuleSvc := service.NewTimeCapsuleService(capsuleRepo, auditSvc, logger)
+	capsuleSvc := service.NewTimeCapsuleService(capsuleRepo, userRepo, auditSvc, logger)
 	uploadSvc := service.NewUploadService(cfg, minioClient, auditSvc, logger)
 
 	// 处理器
